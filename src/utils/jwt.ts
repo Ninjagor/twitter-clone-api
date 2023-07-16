@@ -16,10 +16,3 @@ export function verifyJwt(token: String) {
         return false;
     }
 }
-const testJwt = newJwt({
-    username: "testuser3",
-    password: "hahahaha!"
-})
-console.log(testJwt)
-
-// console.log(verifyJwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7InVzZXJuYW1lIjoidGVzdHVzZXIzIiwicGFzc3dvcmQiOiJoYWhhaGFoYSEifSwiaWF0IjoxNjg5NTI0NzUwfQ.LCNxGBEQilxpP2-BRV5hZ5I6_8tnEF04xXVz2HAxSNI"))
