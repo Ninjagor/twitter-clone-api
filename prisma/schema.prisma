@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+
+model User {
+  id String @id @default(uuid()) // Randomly Generated UUID in format ########-####-####-####-############
+  username String @unique
+  email String? // Optional Field
+  password String
+  accountCreatedAt DateTime @default(now())
+  followers Int @default(0)
+  postsCount Int @default(0)
+  posts Post[]
+}
+
+model Post {
+  id String @id @default(cuid()) // Randomely Generated CUID in format #########################
+  postTitle String? // Optional Field
+  postContent String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@index([userId])
+}
+
