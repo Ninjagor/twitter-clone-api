@@ -43,6 +43,8 @@ var client_1 = require("@prisma/client");
 var jwt_1 = require("./utils/jwt");
 var express_1 = __importDefault(require("express"));
 var cors_1 = __importDefault(require("cors"));
+var checkuser_1 = require("./utils/checkuser");
+var getuserdetails_1 = require("./utils/getuserdetails");
 var jwt = require('jsonwebtoken');
 var prisma = new client_1.PrismaClient();
 var app = (0, express_1.default)();
@@ -52,61 +54,44 @@ app.get('/', function (req, res) {
     res.json({ "data": "twitter clone api" });
 });
 // THE FOLLOWING ENDPOINTS ARE USER AND POST CREATION ENDPOINTS
-// Creating user. I wrote a bunch of stupid if statements that really have no purpose (i could have gotten email from req.body and it would have returned null if it wasnt there anyways instead of writing conditionals to check if email existed), but too lazy to remove them and write the correct code. But it works so who cares :D
+// Creating user. 
 app.post('/api/create/user', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var username, password, userData, token, user, e_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var _a, username, password, email, token, user, e_1;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                username = req.body.username;
-                password = req.body.password;
-                if (req.body.email) {
-                    userData = {
-                        username: username,
-                        email: req.body.email,
-                        password: password
-                    };
-                }
-                else {
-                    userData = {
-                        username: username,
-                        password: password
-                    };
-                }
-                token = (0, jwt_1.newJwt)(userData);
-                _a.label = 1;
+                _a = req.body, username = _a.username, password = _a.password, email = _a.email;
+                return [4 /*yield*/, (0, checkuser_1.checkIfUserAlreadyExists)(username)];
             case 1:
-                _a.trys.push([1, 6, , 7]);
-                user = void 0;
-                if (!req.body.email) return [3 /*break*/, 3];
+                if (!_b.sent()) return [3 /*break*/, 2];
+                res.status(409).json({ "data": "user already exists" });
+                return [2 /*return*/];
+            case 2:
+                token = (0, jwt_1.newJwt)({
+                    username: username,
+                    email: email,
+                    password: password
+                });
+                _b.label = 3;
+            case 3:
+                _b.trys.push([3, 5, , 6]);
                 return [4 /*yield*/, prisma.user.create({
                         data: {
                             username: username,
-                            email: req.body.email,
+                            email: email,
                             password: password
                         }
                     })];
-            case 2:
-                user = _a.sent();
-                return [3 /*break*/, 5];
-            case 3: return [4 /*yield*/, prisma.user.create({
-                    data: {
-                        username: username,
-                        password: password
-                    }
-                })];
             case 4:
-                user = _a.sent();
-                _a.label = 5;
-            case 5:
+                user = _b.sent();
                 console.log({ "data": "successfully created user!", "user": user });
                 res.status(200).json({ "data": "success", "user": user, "token": token });
-                return [3 /*break*/, 7];
-            case 6:
-                e_1 = _a.sent();
+                return [3 /*break*/, 6];
+            case 5:
+                e_1 = _b.sent();
                 res.status(500).json({ "data": "internal server error", "errorinfo": e_1, "summary": "invalid `req.body`, check types and keys" });
-                return [3 /*break*/, 7];
-            case 7: return [2 /*return*/];
+                return [3 /*break*/, 6];
+            case 6: return [2 /*return*/];
         }
     });
 }); });
@@ -127,7 +112,6 @@ app.post('/api/create/post', function (req, res) { return __awaiter(void 0, void
                     })];
             case 1:
                 confUser = _b.sent();
-                console.warn("CONF USER PASS ".concat(confUser.password, " TOKEN PASS ").concat(tokenData.data.password, " EQUATION ").concat(!(confUser.password === tokenData.data.password)));
                 if (!confUser) {
                     res.status(404).json({ "data": "invalid username" });
                     return [2 /*return*/];
@@ -200,11 +184,11 @@ app.post('/api/login', function (req, res) { return __awaiter(void 0, void 0, vo
 // THE FOLLOWING ARE DB QUERY ENDPOINTS
 // A get request to display posts to the user. This uses pagination so things dont get extremely overloaded
 app.get('/api/getposts/:pageNumber', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var postsPerPage, pageNumber, posts, e_3;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var postsPerPage, pageNumber, posts, newPosts, i, _a, _b, _c, _i, fixedPost, userDetails, e_3;
+    return __generator(this, function (_d) {
+        switch (_d.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _d.trys.push([0, 6, , 7]);
                 postsPerPage = 25;
                 pageNumber = parseInt(req.params.pageNumber);
                 return [4 /*yield*/, prisma.post.findMany({
@@ -215,14 +199,40 @@ app.get('/api/getposts/:pageNumber', function (req, res) { return __awaiter(void
                         }
                     })];
             case 1:
-                posts = _a.sent();
-                res.status(200).json({ "data": posts });
-                return [3 /*break*/, 3];
+                posts = _d.sent();
+                newPosts = [];
+                i = void 0;
+                _a = posts;
+                _b = [];
+                for (_c in _a)
+                    _b.push(_c);
+                _i = 0;
+                _d.label = 2;
             case 2:
-                e_3 = _a.sent();
-                res.status(500).json({ "data": "internal server error", "summary": "no clue why this happened, maybe read the error report", "report": e_3 });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                if (!(_i < _b.length)) return [3 /*break*/, 5];
+                _c = _b[_i];
+                if (!(_c in _a)) return [3 /*break*/, 4];
+                i = _c;
+                fixedPost = posts[i];
+                return [4 /*yield*/, (0, getuserdetails_1.getUserDetailsWithId)(posts[i].userId)];
+            case 3:
+                userDetails = _d.sent();
+                fixedPost.username = userDetails.username;
+                fixedPost.email = userDetails.email;
+                newPosts.push(fixedPost);
+                _d.label = 4;
+            case 4:
+                _i++;
+                return [3 /*break*/, 2];
+            case 5:
+                console.log(newPosts);
+                res.status(200).json({ "data": posts });
+                return [3 /*break*/, 7];
+            case 6:
+                e_3 = _d.sent();
+                res.status(500).json({ "data": "internal server error", "summary": "no clue why this happened, read the error report", "report": e_3 });
+                return [3 /*break*/, 7];
+            case 7: return [2 /*return*/];
         }
     });
 }); });

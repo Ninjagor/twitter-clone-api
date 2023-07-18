@@ -3,6 +3,9 @@ import { newJwt, verifyJwt } from './utils/jwt';
 import { User, Post } from './utils/types';
 import express from 'express'
 import cors from "cors"
+import { checkIfUserAlreadyExists } from './utils/checkuser';
+import { getUserDetailsWithId } from './utils/getuserdetails';
+import { get } from 'http';
 const jwt = require('jsonwebtoken');
 
 const prisma = new PrismaClient()
@@ -26,53 +29,34 @@ app.get('/', (req, res) => {
 // THE FOLLOWING ENDPOINTS ARE USER AND POST CREATION ENDPOINTS
 
 
-// Creating user. I wrote a bunch of stupid if statements that really have no purpose (i could have gotten email from req.body and it would have returned null if it wasnt there anyways instead of writing conditionals to check if email existed), but too lazy to remove them and write the correct code. But it works so who cares :D
+// Creating user. 
+
 app.post('/api/create/user', async(req, res) => {
-  const username = req.body.username;
-  const password = req.body.password;
-
-
-  // User Data for JWT
-  let userData;
-  if (req.body.email) {
-    userData = {
-      username: username,
-      email: req.body.email,
-      password: password
-    }
+  const {username, password, email} = req.body
+  if( await checkIfUserAlreadyExists(username) ) {
+    res.status(409).json({ "data": "user already exists" });
+    return;
   } else {
-    userData = {
-      username: username,
-      password: password
-    }
-  }
-
-  const token = newJwt(userData);
-
+  const token = newJwt({
+    username: username,
+    email: email,
+    password: password
+  });
   try {
-    let user: any;
-    if (req.body.email) {
-      user = await prisma.user.create({
-        data: {
-          username: username,
-          email: req.body.email,
-          password: password
-        }
-      })
-    } else {
-      user = await prisma.user.create({
-        data: {
-          username: username,
-          password: password
-        }
-      })
-    }
+    const user = await prisma.user.create({
+      data: {
+        username: username,
+        email: email,
+        password: password
+      }
+    })
     console.log({"data": "successfully created user!", "user": user})
     res.status(200).json({"data": "success", "user": user, "token": token});
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ "data": "internal server error", "errorinfo": e, "summary": "invalid `req.body`, check types and keys" })
   }
-  
+  }
 })
 
 
@@ -88,8 +72,6 @@ app.post('/api/create/post', async (req, res) => {
         username: userName
       }
     })
-    
-    console.warn(`CONF USER PASS ${confUser.password} TOKEN PASS ${tokenData.data.password} EQUATION ${!(confUser.password === tokenData.data.password)}`);
     if (!confUser) {
       res.status(404).json({ "data": "invalid username" })
       return;
@@ -159,9 +141,20 @@ app.get('/api/getposts/:pageNumber', async (req, res) => {
         createdAt: 'desc'
       }
     });
+    let newPosts = [];
+
+    let i: any;
+    for (i in posts) {
+      let fixedPost: any = posts[i];
+      let userDetails = await getUserDetailsWithId(posts[i].userId);
+      fixedPost.username = userDetails.username;
+      fixedPost.email = userDetails.email;
+      newPosts.push(fixedPost);
+    }
+    console.log(newPosts);
     res.status(200).json({ "data": posts })
   } catch (e) {
-    res.status(500).json({ "data": "internal server error", "summary": "no clue why this happened, maybe read the error report", "report": e })
+    res.status(500).json({ "data": "internal server error", "summary": "no clue why this happened, read the error report", "report": e })
   }
 })
 

@@ -15,6 +15,7 @@ model User {
   email String? // Optional Field
   password String
   accountCreatedAt DateTime @default(now())
+  aboutMe String @default("Hello, I am a new twitter user!")
   followers Int @default(0)
   postsCount Int @default(0)
   posts Post[]
@@ -23,7 +24,7 @@ model User {
 model Post {
   id String @id @default(cuid()) // Randomely Generated CUID in format #########################
   postTitle String? // Optional Field
-  postContent String
+  postContent String @db.Text
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
